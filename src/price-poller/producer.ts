@@ -43,10 +43,23 @@ async function producer() {
                 const d = msg.data;
                 if (!d || d.e !== 'aggTrade') return;
 
-                // Push to Redis list for database upload
+                if (!d.T || !d.s || !d.p || !d.q || !d.a) {
+                    console.log('[producer] warning: missing required fields', d);
+                    return;
+                }
+
+                if (isNaN(Number(d.T))) {
+                    console.log('[producer] warning: invalid timestamp T', d);
+                    return;
+                }
+
+                if (isNaN(Number(d.p)) || isNaN(Number(d.q)) || isNaN(Number(d.a))) {
+                    console.log('[producer] warning: invalid numeric fields', d);
+                    return;
+                }
+
                 await redisQueue().push(QUEUE_KEY, JSON.stringify(d));
 
-                // Publish to pubsub channel for real-time subscribers
                 await redisQueue().publish('market:trades', JSON.stringify({
                     type: 'aggTrade',
                     data: d,
