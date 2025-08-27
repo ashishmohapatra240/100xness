@@ -22,10 +22,19 @@ async function producer() {
             const msg = JSON.parse(String(raw));
             const d = msg.data;
             if (!d || d.e !== 'aggTrade') return;
+
+            // Push to Redis list for database upload
             await redis.lpush(QUEUE_KEY, JSON.stringify(d));
 
+            // Publish to pubsub channel for real-time subscribers
+            await redis.publish('market:trades', JSON.stringify({
+                type: 'aggTrade',
+                data: d,
+                timestamp: new Date().toISOString()
+            }));
+
         } catch (e) {
-            LOG('[producer] parse/lpush error', e);
+            LOG('[producer] parse/lpush/publish error', e);
         }
     });
 
