@@ -1,7 +1,7 @@
 import 'dotenv/config';
 
 function validateEnv() {
-    const required = ['REDIS_URL', 'DATABASE_URL'];
+    const required = ['REDIS_URL', 'DATABASE_URL', 'JWT_SECRET'];
     const missing = required.filter(key => !process.env[key]);
 
     if (missing.length > 0) {
@@ -14,6 +14,7 @@ validateEnv();
 export const config = {
     REDIS_URL: process.env.REDIS_URL!,
     DB_URL: process.env.DATABASE_URL!,
+    JWT_SECRET: process.env.JWT_SECRET!,
     SYMBOLS: ['btcusdt', 'ethusdt', 'solusdt'] as const,
     QUEUE_KEY: 'md:aggtrades:queue',
     BATCH_SIZE: Number(process.env.BATCH_SIZE) || 5000,
@@ -22,6 +23,7 @@ export const config = {
 
 export const REDIS_URL = config.REDIS_URL;
 export const DB_URL = config.DB_URL;
+export const JWT_SECRET = config.JWT_SECRET;
 export const SYMBOLS = config.SYMBOLS;
 export const QUEUE_KEY = config.QUEUE_KEY;
 export const BATCH_SIZE = config.BATCH_SIZE;
