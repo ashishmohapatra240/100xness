@@ -53,17 +53,47 @@ async function uploader() {
             }
             if (batch.length === 0) continue;
 
-            const rows: Row[] = batch.map(d => ({
-                ts: new Date(d.T),
-                symbol: String(d.s).toLowerCase(),
-                price: Number(d.p),
-                qty: Number(d.q),
-                agg_id: Number(d.a),
-                first_id: d.f ? Number(d.f) : undefined,
-                last_id: d.l ? Number(d.l) : undefined,
-                maker: d.m,
-                event_ts: d.E ? new Date(d.E) : undefined,
-            }));
+            const rows: Row[] = batch.map(d => {
+                const tradeTime = d.T && !isNaN(Number(d.T)) ? new Date(Number(d.T)) : new Date();
+                const eventTime = d.E && !isNaN(Number(d.E)) ? new Date(Number(d.E)) : undefined;
+
+                if (!d.T || isNaN(Number(d.T))) {
+                    console.log('[uploader] warning: invalid trade timestamp', { T: d.T, data: d });
+                }
+                if (d.E && isNaN(Number(d.E))) {
+                    console.log('[uploader] warning: invalid event timestamp', { E: d.E, data: d });
+                }
+
+                return {
+                    ts: tradeTime,
+                    symbol: String(d.s).toLowerCase(),
+                    price: Number(d.p),
+                    qty: Number(d.q),
+                    agg_id: Number(d.a),
+                    first_id: d.f ? Number(d.f) : undefined,
+                    last_id: d.l ? Number(d.l) : undefined,
+                    maker: d.m,
+                    event_ts: eventTime,
+                };
+            }).filter(row => {
+                // Filter out rows with invalid data
+                const isValid = !isNaN(row.price) &&
+                    !isNaN(row.qty) &&
+                    !isNaN(row.agg_id) &&
+                    row.symbol &&
+                    row.symbol.length > 0;
+
+                if (!isValid) {
+                    console.log('[uploader] warning: filtering out invalid row', row);
+                }
+
+                return isValid;
+            });
+
+            if (rows.length === 0) {
+                console.log('[uploader] warning: no valid rows after filtering, skipping batch');
+                continue;
+            }
 
             const values: any[] = [];
             const placeholders: string[] = [];
