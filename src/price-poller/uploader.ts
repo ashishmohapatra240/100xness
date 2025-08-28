@@ -2,6 +2,7 @@ import Redis from 'ioredis';
 import { pool, schema } from '../lib/db';
 import { REDIS_URL, QUEUE_KEY, BATCH_SIZE, BLOCK_TIMEOUT } from '../lib/env';
 import { redisQueue } from './queue';
+import { redis } from '../lib/redis';
 
 type Row = {
     ts: Date; symbol: string; price: number; qty: number;
@@ -10,10 +11,6 @@ type Row = {
 };
 
 async function uploader() {
-    const redis = new Redis(REDIS_URL, {
-        maxRetriesPerRequest: 3,
-        lazyConnect: true
-    });
 
     redis.on('error', (e) => console.log('[uploader][redis:error]', e));
     redis.on('connect', () => console.log('[uploader][redis] connected'));
@@ -107,7 +104,6 @@ async function uploader() {
                     r.first_id ?? null, r.last_id ?? null, r.maker ?? null, r.event_ts ?? null);
             }
 
-            // Use transaction for batch insert
             const client = await pool.connect();
             try {
                 await client.query('BEGIN');

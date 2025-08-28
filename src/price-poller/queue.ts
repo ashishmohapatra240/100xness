@@ -1,11 +1,5 @@
-import Redis from "ioredis";
-import { REDIS_URL, SYMBOLS, QUEUE_KEY } from "../lib/env";
+import { redis } from "../lib/redis";
 
-
-const redis = new Redis(REDIS_URL, {
-    maxRetriesPerRequest: 3,
-    lazyConnect: true
-});
 
 redis.on('error', (e) => console.log('[producer][redis:error]', e));
 redis.on('connect', () => console.log('[producer][redis] connected'));
