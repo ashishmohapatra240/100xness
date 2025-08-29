@@ -6,6 +6,6 @@
 `
 SELECT *
 FROM md_candles_5m
-WHERE symbol = 'BTCUSDT'
+WHERE symbol = 'btcusdt'
 ORDER BY bucket DESC
 LIMIT 100;`
