@@ -1,6 +1,5 @@
-import Redis from 'ioredis';
 import { pool, schema } from '../lib/db';
-import { REDIS_URL, QUEUE_KEY, BATCH_SIZE, BLOCK_TIMEOUT } from '../lib/env';
+import { QUEUE_KEY, BATCH_SIZE, BLOCK_TIMEOUT } from '../lib/env';
 import { redisQueue } from './queue';
 import { redis } from '../lib/redis';
 
@@ -11,10 +10,6 @@ type Row = {
 };
 
 async function uploader() {
-
-    redis.on('error', (e) => console.log('[uploader][redis:error]', e));
-    redis.on('connect', () => console.log('[uploader][redis] connected'));
-    redis.on('reconnecting', () => console.log('[uploader][redis] reconnecting'));
 
     await pool.query('SELECT 1');
     await schema();

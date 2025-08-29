@@ -5,8 +5,3 @@ export const redis = new Redis(REDIS_URL, {
     maxRetriesPerRequest: 3,
     lazyConnect: true,
 });
-
-export const sub = new Redis(REDIS_URL, {
-    maxRetriesPerRequest: 3,
-    lazyConnect: true,
-});
