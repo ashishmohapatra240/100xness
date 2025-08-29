@@ -10,12 +10,14 @@
     "dev:producer": "tsc -b && node dist/price_poller/producer.js",
     "dev:uploader": "tsc -b && node dist/price_poller/uploader.js",
     "dev:server": "nodemon dist/server/index.js",
+    "dev:ws": "node dist/ws-fe/ws.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@prisma/client": "^6.15.0",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/pg": "^8.15.5",
