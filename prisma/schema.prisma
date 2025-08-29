@@ -1,0 +1,97 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       String    @id @default(uuid()) @db.Uuid
+  name     String
+  email    String    @unique
+  password String
+  assets   Asset[]
+  orders   Order[]
+  Borrow   Borrow[]
+  Balance  Balance[]
+}
+
+model Asset {
+  id       String      @id @default(uuid()) @db.Uuid
+  symbol   SymbolTrade
+  quantity Decimal     @db.Decimal(20, 10)
+  userId   String      @db.Uuid
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Borrow   Borrow[]
+
+  @@unique([userId, symbol])
+}
+
+enum SymbolTrade {
+  btcusdt
+  ethusdt
+  solusdt
+}
+
+model Order {
+  id         String      @id @default(uuid()) @db.Uuid
+  userId     String      @db.Uuid
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symbol     SymbolTrade
+  quantity   Decimal     @db.Decimal(20, 10)
+  price      Decimal     @db.Decimal(20, 10)
+  margin     Decimal     @db.Decimal(20, 10)
+  leverage   Decimal     @default(1) @db.Decimal(20, 10)
+  stopLoss   Decimal?    @db.Decimal(20, 10)
+  takeProfit Decimal?    @db.Decimal(20, 10)
+  status     OrderStatus @default(open)
+  orderType  OrderType
+  exitPrice  Decimal?    @db.Decimal(20, 10)
+  createdAt  DateTime    @default(now())
+  closedAt   DateTime?
+
+  @@map("orders")
+}
+
+model Borrow {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @db.Uuid
+  assetId   String       @db.Uuid
+  asset     Asset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+  closedAt  DateTime?
+  status    BorrowStatus @default(open)
+}
+
+model Balance {
+  id          String  @id @default(uuid()) @db.Uuid
+  userId      String  @db.Uuid
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usd_balance Decimal @db.Decimal(20, 10)
+
+  @@unique([userId])
+}
+
+enum BorrowStatus {
+  open
+  closed
+}
+
+enum OrderType {
+  buy
+  sell
+}
+
+enum OrderStatus {
+  open
+  closed
+}
