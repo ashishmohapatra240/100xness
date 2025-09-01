@@ -1,8 +1,8 @@
 import { Pool } from 'pg';
-import { DB_URL } from './env';
+import { TIMESCALE_URL } from './env';
 
 
-export const pool = new Pool({ connectionString: DB_URL, max: 10 });
+export const pool = new Pool({ connectionString: TIMESCALE_URL, max: 10 });
 
 export async function schema() {
   const client = await pool.connect();
@@ -27,7 +27,6 @@ export async function schema() {
       PRIMARY KEY (symbol, agg_id, ts)
     );
 
-    -- make it a hypertable (safe if already done)
     SELECT create_hypertable('md_trades','ts', if_not_exists => TRUE);
 
     CREATE INDEX IF NOT EXISTS idx_md_trades_symbol_ts
@@ -108,7 +107,6 @@ export async function schema() {
   `);
 
 
-    //Refresh Here
     await client.query(`
     DO $$
     BEGIN
@@ -174,7 +172,6 @@ export async function schema() {
       END IF;
     END$$;
   `);
-    await client.query('COMMIT');
 
   } catch (err) {
     await client.query('ROLLBACK');
