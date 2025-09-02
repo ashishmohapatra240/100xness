@@ -10,18 +10,17 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("POSTGRES_URL")
 }
 
 model User {
-  id       String    @id @default(uuid()) @db.Uuid
+  id       String   @id @default(uuid()) @db.Uuid
   name     String
-  email    String    @unique
+  email    String   @unique
   password String
   assets   Asset[]
   orders   Order[]
-  Borrow   Borrow[]
-  Balance  Balance[]
+  balance  Balance?
 }
 
 model Asset {
@@ -30,7 +29,6 @@ model Asset {
   quantity Decimal     @db.Decimal(20, 10)
   userId   String      @db.Uuid
   user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  Borrow   Borrow[]
 
   @@unique([userId, symbol])
 }
@@ -41,54 +39,46 @@ enum SymbolTrade {
   solusdt
 }
 
+enum CloseReason {
+  takeProfit
+  stopLoss
+  margin
+  manual
+}
+
 model Order {
-  id         String      @id @default(uuid()) @db.Uuid
-  userId     String      @db.Uuid
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  symbol     SymbolTrade
-  quantity   Decimal     @db.Decimal(20, 10)
-  price      Decimal     @db.Decimal(20, 10)
-  margin     Decimal     @db.Decimal(20, 10)
-  leverage   Decimal     @default(1) @db.Decimal(20, 10)
-  stopLoss   Decimal?    @db.Decimal(20, 10)
-  takeProfit Decimal?    @db.Decimal(20, 10)
-  status     OrderStatus @default(open)
-  orderType  OrderType
-  exitPrice  Decimal?    @db.Decimal(20, 10)
-  createdAt  DateTime    @default(now())
-  closedAt   DateTime?
+  id          String       @id @default(uuid()) @db.Uuid
+  userId      String       @db.Uuid
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symbol      SymbolTrade
+  quantity    Decimal      @db.Decimal(20, 10)
+  price       Decimal      @db.Decimal(20, 10)
+  margin      Decimal?     @db.Decimal(20, 10)
+  leverage    Decimal      @default(1) @db.Decimal(20, 10)
+  stopLoss    Decimal?     @db.Decimal(20, 10)
+  takeProfit  Decimal?     @db.Decimal(20, 10)
+  status      OrderStatus  @default(open)
+  closeReason CloseReason?
+  orderType   OrderType
+
+  pnl       Decimal?  @db.Decimal(20, 10)
+  exitPrice Decimal?  @db.Decimal(20, 10)
+  createdAt DateTime  @default(now())
+  closedAt  DateTime?
 
   @@map("orders")
 }
 
-model Borrow {
-  id        String       @id @default(uuid()) @db.Uuid
-  userId    String       @db.Uuid
-  assetId   String       @db.Uuid
-  asset     Asset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime     @default(now())
-  closedAt  DateTime?
-  status    BorrowStatus @default(open)
-}
-
 model Balance {
   id          String  @id @default(uuid()) @db.Uuid
-  userId      String  @db.Uuid
+  userId      String  @unique @db.Uuid
   user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  usd_balance Decimal @db.Decimal(20, 10)
-
-  @@unique([userId])
-}
-
-enum BorrowStatus {
-  open
-  closed
+  usd_balance Decimal @default(1000.0) @db.Decimal(20, 10)
 }
 
 enum OrderType {
-  buy
-  sell
+  long
+  short
 }
 
 enum OrderStatus {
