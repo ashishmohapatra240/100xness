@@ -111,7 +111,6 @@ export const getCandles = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error fetching candles:", error);
 
-    // Check if it's a timestamp-related error
     if (error && typeof error === 'object' && 'code' in error && error.code === '22008') {
       return res.status(400).json({
         success: false,
@@ -150,10 +149,9 @@ export const getAvailableSymbols = async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error("Error fetching symbols:", error);
-    
-    // Check if it's a table not found error
+
     if (error && typeof error === 'object' && 'code' in error) {
-      if (error.code === '42P01') { // relation does not exist
+      if (error.code === '42P01') {
         return res.status(500).json({
           success: false,
           message: "Database table md_trades does not exist. Please ensure database schema is initialized.",
@@ -161,7 +159,7 @@ export const getAvailableSymbols = async (req: Request, res: Response) => {
         });
       }
     }
-    
+
     res.status(500).json({
       success: false,
       message: "Internal server error",
