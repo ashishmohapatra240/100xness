@@ -8,7 +8,10 @@ redis.on('reconnecting', () => console.log('[producer][redis] reconnecting'));
 export function redisQueue() {
     return {
         push: (key: string, value: string) => redis.lpush(key, value),
-        pop: (key: string) => redis.rpop(key),
+        pop: async (key: string) => {
+            const result = await redis.rpop(key);
+            return result;
+        },
         size: (key: string) => redis.llen(key),
         clear: (key: string) => redis.del(key),
         list: (key: string) => redis.lrange(key, 0, -1),
