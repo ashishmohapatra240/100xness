@@ -1,76 +1,70 @@
 import Websocket from "ws";
 import { SYMBOLS, QUEUE_KEY } from "../lib/env";
 import { redisQueue } from "./queue";
+import { redis } from "../lib/redis";
+
+
+type BidAsk = Record<string, { bid: number, ask: number }>;
 
 async function producer() {
 
-    const streams = SYMBOLS.map(s => `${s}@aggTrade`).join('/');
+    const streams = SYMBOLS.map(s => `${s}@aggTrade/${s}@bookTicker`).join('/');
     const url = `wss://fstream.binance.com/stream?streams=${streams}`;
     console.log('[producer] connection upstream', url);
 
-    let reconnectAttempts = 0;
-    const MAX_RECONNECT_ATTEMPTS = 5;
-    const RECONNECT_DELAY_BASE = 1000;
+    let bids: BidAsk = {};
+
 
     function connectWebSocket() {
         const ws = new Websocket(url);
-
         ws.on('open', () => {
             console.log('[producer] upstream open');
-            reconnectAttempts = 0;
         });
-
         ws.on('error', (e) => {
             console.log('[producer] upstream error', e);
         });
-
         ws.on('close', () => {
             console.log('[producer] upstream closed');
-            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-                reconnectAttempts++;
-                const delay = Math.min(RECONNECT_DELAY_BASE * Math.pow(2, reconnectAttempts - 1), 30000);
-                console.log(`[producer] attempting reconnection ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in ${delay}ms`);
-                setTimeout(connectWebSocket, delay);
-            } else {
-                console.log('[producer] max reconnection attempts reached, exiting');
-                process.exit(1);
-            }
         });
-
         ws.on('message', async (raw) => {
             try {
                 const msg = JSON.parse(String(raw));
                 const d = msg.data;
-                if (!d || d.e !== 'aggTrade') return;
 
-                if (!d.T || !d.s || !d.p || !d.q || !d.a) {
-                    console.log('[producer] warning: missing required fields', d);
+                const bid = d.b;
+                const ask = d.a;
+
+                if (!d || d.e !== 'aggTrade' && d.e !== 'bookTicker') return;
+                if (d.e === "bookTicker") {
+                    bids[d.s] = {
+                        bid,
+                        ask
+                    }
+                    console.log("bid",bid,"ask", ask)
+
                     return;
                 }
+                if (d.e === "aggTrade") {
+                    const { bid, ask } = bids[d.s] || { bid: null, ask: null };
 
-                if (isNaN(Number(d.T))) {
-                    console.log('[producer] warning: invalid timestamp T', d);
-                    return;
+                    await redisQueue().push(QUEUE_KEY, JSON.stringify(d));
+
+                    await redisQueue().publish('market:trades', JSON.stringify({
+                        data: d,
+                        bid,
+                        ask,
+                        timestamp: new Date().toISOString()
+                    }));
+
+                    const ts = Number(d.T) || Date.now();
+                    await redis.set(`last:price:${d.s}`, JSON.stringify({ ask, bid, ts }))
+                    console.log(`[producer] updated last:price:${d.s}`, ask, bid, ts);
+
                 }
-
-                if (isNaN(Number(d.p)) || isNaN(Number(d.q)) || isNaN(Number(d.a))) {
-                    console.log('[producer] warning: invalid numeric fields', d);
-                    return;
-                }
-
-                await redisQueue().push(QUEUE_KEY, JSON.stringify(d));
-
-                await redisQueue().publish('market:trades', JSON.stringify({
-                    type: 'aggTrade',
-                    data: d,
-                    timestamp: new Date().toISOString()
-                }));
-
             } catch (e) {
                 console.log('[producer] parse/lpush/publish error', e);
             }
         });
-
         return ws;
     }
 
