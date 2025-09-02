@@ -15,9 +15,16 @@ export const register = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "User already exists" });
         }
 
-
         const newUser = await prisma.user.create({
-            data: { name, email, password }
+            data: { name, email, password, balance: { create: {} } }
+        });
+
+        const token = jwt.sign({ id: newUser.id, email: newUser.email }, JWT_SECRET, { expiresIn: "1d" });
+
+        res.cookie("auth_token", token, {
+            httpOnly: true,
+            sameSite: 'strict',
+            maxAge: 15 * 60 * 1000,
         });
 
         res.status(201).json({ message: "User created successfully", user: { id: newUser.id, email: newUser.email } });
@@ -43,12 +50,38 @@ export const login = async (req: Request, res: Response) => {
 
         res.cookie("auth_token", token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-            maxAge: 24 * 60 * 60 * 1000
+            sameSite: 'strict',
+            maxAge: 15 * 60 * 1000,
         });
 
-        res.status(200).json({ message: "Login successful" });
+        console.log(`[auth] User ${user.email} logged in successfully, token set in cookie`);
+        res.status(200).json({
+            message: "Login successful",
+            user: { id: user.id, email: user.email }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+}
+
+
+export const getUser = async (req: Request, res: Response) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ message: "Authentication required" });
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.id },
+            select: { id: true, email: true, name: true, balance: true }
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.status(200).json({ user });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Internal server error" });
